@@ -650,7 +650,7 @@ server.jdbc.driver.path=/usr/share/java/
 
 #### 5.2、解决系统上的问题
 
-关键信息来了：yum 安装完server后，需要修改ambari-server的系统检查设置
+yum 安装完server后，需要修改ambari-server的系统检查设置
 一共需要修改三处信息:
 
 ##### os_check.py
