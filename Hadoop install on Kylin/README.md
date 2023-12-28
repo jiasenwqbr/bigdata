@@ -2,17 +2,84 @@
 
 
 
+
+
+
+
+hadoop-3.1.3.tar.gz
+
+apache-hive-3.1.2-bin.tar.gz
+
+apache-zookeeper-3.5.7-bin.tar.gz
+
+hbase-2.0.5-bin.tar.gz
+
+apache-phoenix-5.0.0-HBase-2.0-bin.tar.gz
+
+spark-3.0.0-bin-hadoop3.2.tgz  
+
+spark-3.0.0-bin-without-hadoop.tgz
+
+jdk-8u212-linux-x64.tar.gz
+
+mysql-connector-java-5.1.40-bin.jar
+
+mysql-5.7.17-linux-glibc2.5-x86_64.tar
+
+
+
+
+
 # 集群规划
 
-## hadoop
+## Hadoop
 
 |      | Vm60             | Vm61                       | Vm62                      |
 | ---- | ---------------- | -------------------------- | ------------------------- |
 | HDFS | NameNodeDataNode | DataNode                   | SecondaryNameNodeDataNode |
 | YARN | NodeManager      | ResourceManagerNodeManager | NodeManager               |
-|      |                  |                            |                           |
-|      |                  |                            |                           |
-|      |                  |                            |                           |
+
+## zk
+
+|           | 服务器vm60 | 服务器vm61 | 服务器vm62 |
+| --------- | ---------- | ---------- | ---------- |
+| Zookeeper | Zookeeper  | Zookeeper  | Zookeeper  |
+
+## Hive
+
+|      | 服务器vm60 | 服务器vm61 | 服务器vm62 |
+| ---- | ---------- | ---------- | ---------- |
+| Hive | hive       |            |            |
+
+## Hbase
+
+|       | 服务器vm60            | 服务器vm61   | 服务器vm62   |
+| ----- | --------------------- | ------------ | ------------ |
+| Hbase | master   regionserver | regionserver | regionserver |
+
+## Phoenix
+
+
+
+|         | 服务器vm60 | 服务器vm61 | 服务器vm62 |
+| ------- | ---------- | ---------- | ---------- |
+| Phoenix | Phoenix    | Phoenix    | Phoenix    |
+
+
+
+## Spark
+
+|       | 服务器vm60     | 服务器vm61 | 服务器vm62 |
+| ----- | -------------- | ---------- | ---------- |
+| Spark | master  worker | worker     | worker     |
+
+
+
+
+
+
+
+
 
 
 
@@ -1430,35 +1497,703 @@ hive (default)>
 
 ### HBase的解压
 
+解压Hbase到指定目录
+
+```shell
+[root@vm60 08.hbase]# tar -zxvf hbase-2.0.5-bin.tar.gz -C /ztgx-jx/cluster/
+[root@vm60 08.hbase]# mv /ztgx-jx/cluster/hbase-2.0.5/ /ztgx-jx/cluster/hbase/
+```
+
+配置环境变量
+
+```shell
+
+[root@vm60 conf]# vim /etc/profile.d/hadoop_env.sh
+
+添加
+#HBASE_HOME
+export HBASE_HOME=//ztgx-jx/cluster/hbase
+export PATH=$PATH:$HBASE_HOME/bin
+```
+
 
 
 ### 配置文件
+
+修改HBase对应的配置文件。
+
+#### 1.hbase-env.sh修改内容：
+
+```shell
+[root@vm60 conf]# pwd
+/ztgx-jx/cluster/hbase/conf
+
+export HBASE_MANAGES_ZK=false
+```
+
+#### 2.hbase-site.xml修改内容：
+
+```xml
+<configuration>
+    <property>
+        <name>hbase.rootdir</name>
+        <value>hdfs://vm60:8020/hbase</value>
+    </property>
+
+    <property>
+        <name>hbase.cluster.distributed</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>hbase.zookeeper.quorum</name>
+        <value>vm60,vm61,vm62</value>
+    </property>
+</configuration>
+```
+
+#### 3.修改 regionservers
+
+```shell
+vm60
+vm61
+vm62
+```
+
+
 
 
 
 ### 远程发送到其他集群
 
+```
+[root@vm60 cluster]# /home/root/bin/sync hbase/
+```
+
 
 
 #### HBase服务的启动
 
+```shell
+[root@vm60 ~]# cd /ztgx-jx/cluster/hbase/
+[root@vm60 hbase]# bin/start-hbase.sh 
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/ztgx-jx/cluster/hbase/lib/slf4j-log4j12-1.7.25.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/ztgx-jx/cluster/hadoop-3.1.3/share/hadoop/common/lib/slf4j-log4j12-1.7.25.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.slf4j.impl.Log4jLoggerFactory]
+running master, logging to //ztgx-jx/cluster/hbase/logs/hbase-root-master-vm60.out
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/ztgx-jx/cluster/hbase/lib/slf4j-log4j12-1.7.25.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/ztgx-jx/cluster/hadoop-3.1.3/share/hadoop/common/lib/slf4j-log4j12-1.7.25.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.slf4j.impl.Log4jLoggerFactory]
+vm60: running regionserver, logging to //ztgx-jx/cluster/hbase/logs/hbase-root-regionserver-vm60.out
+vm62: running regionserver, logging to /ztgx-jx/cluster/hbase/bin/../logs/hbase-root-regionserver-vm62.out
+vm61: running regionserver, logging to /ztgx-jx/cluster/hbase/bin/../logs/hbase-root-regionserver-vm61.out
+vm60: SLF4J: Class path contains multiple SLF4J bindings.
+vm60: SLF4J: Found binding in [jar:file:/ztgx-jx/cluster/hbase/lib/slf4j-log4j12-1.7.25.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+vm60: SLF4J: Found binding in [jar:file:/ztgx-jx/cluster/hadoop-3.1.3/share/hadoop/common/lib/slf4j-log4j12-1.7.25.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+vm60: SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+vm60: SLF4J: Actual binding is of type [org.slf4j.impl.Log4jLoggerFactory]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+vm60: SLF4J: Actual binding is of type [org.slf4j.impl.Log4jLoggerFactory]
+vm62: SLF4J: Class path contains multiple SLF4J bindings.
+vm62: SLF4J: Found binding in [jar:file:/ztgx-jx/cluster/hbase/lib/slf4j-log4j12-1.7.25.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+vm62: SLF4J: Found binding in [jar:file:/ztgx-jx/cluster/hadoop-3.1.3/share/hadoop/common/lib/slf4j-log4j12-1.7.25.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+vm62: SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+vm62: SLF4J: Actual binding is of type [org.slf4j.impl.Log4jLoggerFactory]
+vm61: SLF4J: Class path contains multiple SLF4J bindings.
+vm61: SLF4J: Found binding in [jar:file:/ztgx-jx/cluster/hbase/lib/slf4j-log4j12-1.7.25.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+vm61: SLF4J: Found binding in [jar:file:/ztgx-jx/cluster/hadoop-3.1.3/share/hadoop/common/lib/slf4j-log4j12-1.7.25.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+vm61: SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+vm61: SLF4J: Actual binding is of type [org.slf4j.impl.Log4jLoggerFactory]
+```
 
 
 
+```shell
+[root@vm60 bin]# /home/root/bin/psc.sh jps -l
+--------- vm60 ----------
+1201 sun.tools.jps.Jps
+216624 org.apache.hadoop.mapreduce.v2.hs.JobHistoryServer
+216455 org.apache.hadoop.yarn.server.nodemanager.NodeManager
+216085 org.apache.hadoop.hdfs.server.datanode.DataNode
+259876 org.apache.hadoop.hbase.regionserver.HRegionServer
+215929 org.apache.hadoop.hdfs.server.namenode.NameNode
+8955 org.tanukisoftware.wrapper.WrapperSimpleApp
+223598 org.apache.zookeeper.server.quorum.QuorumPeerMain
+--------- vm61 ----------
+8614 org.tanukisoftware.wrapper.WrapperSimpleApp
+237595 org.apache.hadoop.hbase.regionserver.HRegionServer
+209336 org.apache.hadoop.hdfs.server.namenode.SecondaryNameNode
+216936 org.apache.zookeeper.server.quorum.QuorumPeerMain
+209519 org.apache.hadoop.yarn.server.resourcemanager.ResourceManager
+238367 sun.tools.jps.Jps
+209678 org.apache.hadoop.yarn.server.nodemanager.NodeManager
+209213 org.apache.hadoop.hdfs.server.datanode.DataNode
+--------- vm62 ----------
+8594 org.tanukisoftware.wrapper.WrapperSimpleApp
+236113 org.apache.hadoop.hbase.regionserver.HRegionServer
+236864 sun.tools.jps.Jps
+208599 org.apache.hadoop.hdfs.server.datanode.DataNode
+215673 org.apache.zookeeper.server.quorum.QuorumPeerMain
+208760 org.apache.hadoop.yarn.server.nodemanager.NodeManager
+```
+
+
+
+### 启动
+
+```shell
+启动、停止Hbase集群
+bin/start-hbase.sh
+bin/stop-hbase.sh
+
+```
+
+
+
+#### 错误处理：
+
+```shell
+HBase Shell
+Use "help" to get list of supported commands.
+Use "exit" to quit this interactive shell.
+For Reference, please visit: http://hbase.apache.org/2.0/book.html#shell
+Version 2.0.5, r76458dd074df17520ad451ded198cd832138e929, Mon Mar 18 00:41:49 UTC 2019
+Took 0.0046 seconds                                                                                                
+hbase(main):001:0> list
+TABLE                                                                                                              
+
+ERROR: KeeperErrorCode = NoNode for /hbase/master
+
+```
+
+第一步
+将htrace-core-3.1.0-incubating.jar复制到lib路径下，就可成功找到。
+
+cd $HBASE_HOME
+cp lib/client-facing-thirdparty/htrace-core-3.1.0-incubating.jar lib/
+1
+2
+然后启动 start-hbase.sh 成功！
+
+但还可能会出现上面的问题，还没有完全解决好。接着操作第二步。
+
+第二步
+修改hbase-env.sh，为该文件增加export HBASE_DISABLE_HADOOP_CLASSPATH_LOOKUP="true"。执行下面语句：
+
+cd /usr/local/install/hbase/conf
+vim hbase-env.sh
+
+```shell
+[root@vm60 hbase]# /home/root/bin/psc.sh jps -l
+--------- vm60 ----------
+213826 org.apache.hadoop.hdfs.server.namenode.NameNode
+220037 org.apache.hadoop.hbase.master.HMaster
+213979 org.apache.hadoop.hdfs.server.datanode.DataNode
+214554 org.apache.hadoop.mapreduce.v2.hs.JobHistoryServer
+213353 org.tanukisoftware.wrapper.WrapperSimpleApp
+214366 org.apache.hadoop.yarn.server.nodemanager.NodeManager
+214701 org.apache.zookeeper.server.quorum.QuorumPeerMain
+220141 org.apache.hadoop.hbase.regionserver.HRegionServer
+222092 sun.tools.jps.Jps
+--------- vm61 ----------
+130640 org.tanukisoftware.wrapper.WrapperSimpleApp
+135171 org.apache.hadoop.hbase.regionserver.HRegionServer
+136483 sun.tools.jps.Jps
+131200 org.apache.hadoop.yarn.server.resourcemanager.ResourceManager
+131354 org.apache.hadoop.yarn.server.nodemanager.NodeManager
+130989 org.apache.hadoop.hdfs.server.namenode.SecondaryNameNode
+130863 org.apache.hadoop.hdfs.server.datanode.DataNode
+131789 org.apache.zookeeper.server.quorum.QuorumPeerMain
+--------- vm62 ----------
+126001 org.apache.zookeeper.server.quorum.QuorumPeerMain
+125554 org.tanukisoftware.wrapper.WrapperSimpleApp
+130437 sun.tools.jps.Jps
+125831 org.apache.hadoop.yarn.server.nodemanager.NodeManager
+125704 org.apache.hadoop.hdfs.server.datanode.DataNode
+129373 org.apache.hadoop.hbase.regionserver.HRegionServer
+[root@vm60 hbase]# 
+```
 
 
 
 ## 5、phoenix安装
 
+### 解压tar包
+
+```shell
+tar -zxvf apache-phoenix-5.0.0-HBase-2.0-bin.tar.gz -C /ztgx-jx/cluster/
+```
+
+```shell
+mv apache-phoenix-5.0.0-HBase-2.0-bin/ phoenix/
+```
+
+
+
+### 复制server包并拷贝到各个节点的hbase/lib
+
+```shell
+[root@vm60 09.phoenix]# cd /ztgx-jx/cluster/
+[root@vm60 cluster]# ls
+apache-phoenix-5.0.0-HBase-2.0-bin  hadoop-3.1.3  hbase  hive  zookeeper-3.5.7
+[root@vm60 cluster]# mv apache-phoenix-5.0.0-HBase-2.0-bin/ phoenix/
+[root@vm60 cluster]# ls
+hadoop-3.1.3  hbase  hive  phoenix  zookeeper-3.5.7
+[root@vm60 cluster]# cd phoenix/
+[root@vm60 phoenix]# pwd
+/ztgx-jx/cluster/phoenix
+[root@vm60 phoenix]# cp phoenix-5.0.0-HBase-2.0-server.jar /ztgx-jx/cluster/hbase/lib/
+
+
+[root@vm60 phoenix]# /home/root/bin/sync /ztgx-jx/cluster/hbase/lib/phoenix-5.0.0-HBase-2.0-server.jar 
+==================== vm60 ====================
+sending incremental file list
+
+sent 74 bytes  received 12 bytes  172.00 bytes/sec
+total size is 41,800,313  speedup is 486,050.15
+==================== vm61 ====================
+sending incremental file list
+phoenix-5.0.0-HBase-2.0-server.jar
+
+sent 41,810,630 bytes  received 35 bytes  83,621,330.00 bytes/sec
+total size is 41,800,313  speedup is 1.00
+==================== vm62 ====================
+sending incremental file list
+phoenix-5.0.0-HBase-2.0-server.jar
+
+sent 41,810,630 bytes  received 35 bytes  83,621,330.00 bytes/sec
+total size is 41,800,313  speedup is 1.00
+
+```
+
+
+
+### 配置环境变量
+
+```shell
+# PHOENIX_HOME
+export PHOENIX_HOME=/ztgx-jx/cluster/phoenix
+export PHOENIX_CLASSPATH=$PHOENIX_HOME
+export PATH=$PATH:$PHOENIX_HOME/bin
+```
+
+### 在hbase的bin/hbase-site.xml 文件中添加配置
+
+```xml
+<property>
+    <name>phoenix.schema.isNamespaceMappingEnabled</name>
+    <value>true</value>
+</property>
+
+<property>
+    <name>phoenix.schema.mapSystemTablesToNamespace</name>
+    <value>true</value>
+</property>
+```
+
+分发文件
+
+```shell
+[root@vm60 conf]# /home/root/bin/sync hbase-site.xml 
+==================== vm60 ====================
+sending incremental file list
+
+sent 62 bytes  received 12 bytes  148.00 bytes/sec
+total size is 1,707  speedup is 23.07
+==================== vm61 ====================
+sending incremental file list
+hbase-site.xml
+
+sent 1,120 bytes  received 53 bytes  2,346.00 bytes/sec
+total size is 1,707  speedup is 1.46
+==================== vm62 ====================
+sending incremental file list
+hbase-site.xml
+
+sent 1,120 bytes  received 53 bytes  2,346.00 bytes/sec
+total size is 1,707  speedup is 1.46
+```
+
+
+
+### 重启HBase
+
+```shell
+[root@vm60 hbase]# bin/stop-hbase.sh 
+stopping hbase..........
+[root@vm60 hbase]# bin/start-hbase.sh 
+running master, logging to /ztgx-jx/cluster/hbase/logs/hbase-root-master-vm60.out
+vm62: running regionserver, logging to /ztgx-jx/cluster/hbase/logs/hbase-root-regionserver-vm62.out
+vm61: running regionserver, logging to /ztgx-jx/cluster/hbase/logs/hbase-root-regionserver-vm61.out
+vm60: running regionserver, logging to /ztgx-jx/cluster/hbase/logs/hbase-root-regionserver-vm60.out
+[root@vm60 hbase]# pwd
+/ztgx-jx/cluster/hbase
+[root@vm60 hbase]#
+```
+
+
+
+### 连接Phoenix
+
+```shell
+/ztgx-jx/cluster/phoenix/bin/sqlline.py vm60,vm61,vm62:2181
+```
+
+
+
+
+
 
 
 ## 6、Spark安装
 
+### **Standalone**模式
 
+#### 解压缩文件
+
+```shell
+ tar -zxvf spark-3.0.0-bin-hadoop3.2.tgz -C /ztgx-jx/cluster/
+```
+
+#### 修改配置文件
+
+进入解压缩后路径的 conf 目录，修改 slaves.template 文件名为 slaves
+
+```shell
+mv slaves.template slaves
+```
+
+修改 slaves 文件，添加 work 节
+
+```shell
+vm60
+vm61
+vm62
+```
+
+修改 spark-env.sh.template 文件名为 spark-env.sh
+
+```shell
+mv spark-env.sh.template spark-env.sh
+```
+
+修改 spark-env.sh 文件，添加 JAVA_HOME 环境变量和集群对应的 master 节点
+
+```shell
+export JAVA_HOME=/usr/local/java/jdk1.8.0_212
+SPARK_MASTER_HOST=vm60
+SPARK_MASTER_PORT=7077
+```
+
+分发 spark-standalone 目录
+
+```shell
+[root@vm60 cluster]# /home/root/bin/sync spark-standalone/
+```
+
+### **启动集群**
+
+```shell
+sbin/start-all.sh
+```
+
+
+
+```shell
+[root@vm60 spark-standalone]# pwd
+/ztgx-jx/cluster/spark-standalone
+[root@vm60 spark-standalone]# sbin/start-all.sh 
+starting org.apache.spark.deploy.master.Master, logging to /ztgx-jx/cluster/spark-standalone/logs/spark-root-org.ap
+ache.spark.deploy.master.Master-1-vm60.out
+vm61: starting org.apache.spark.deploy.worker.Worker, logging to /ztgx-jx/cluster/spark-standalone/logs/spark-root-
+org.apache.spark.deploy.worker.Worker-1-vm61.out
+vm62: starting org.apache.spark.deploy.worker.Worker, logging to /ztgx-jx/cluster/spark-standalone/logs/spark-root-
+org.apache.spark.deploy.worker.Worker-1-vm62.out
+vm60: starting org.apache.spark.deploy.worker.Worker, logging to /ztgx-jx/cluster/spark-standalone/logs/spark-root-
+org.apache.spark.deploy.worker.Worker-1-vm60.out
+```
+
+查看进程状态：
+
+```shell
+[root@vm60 spark-standalone]# /home/root/bin/psc.sh jps
+--------- vm60 ----------
+232115 Worker
+213826 NameNode
+226608 HMaster
+232004 Master
+213979 DataNode
+226715 HRegionServer
+232539 Jps
+214554 JobHistoryServer
+213353 WrapperSimpleApp
+214366 NodeManager
+214701 QuorumPeerMain
+--------- vm61 ----------
+130640 WrapperSimpleApp
+142819 Worker
+131200 ResourceManager
+143200 Jps
+131354 NodeManager
+139480 HRegionServer
+130989 SecondaryNameNode
+130863 DataNode
+131789 QuorumPeerMain
+--------- vm62 ----------
+126001 QuorumPeerMain
+125554 WrapperSimpleApp
+136886 Worker
+125831 NodeManager
+125704 DataNode
+133560 HRegionServer
+137084 Jps
+```
 
 
 
 
 
 # 总群启脚本
+
+### 脚本编写
+
+#### hbase.sh
+
+```shell
+#!/bin/bash
+case $1 in
+"start"){
+        
+                echo " --------启动 hbase-------"
+                "/ztgx-jx/cluster/hbase/bin/start-hbase.sh"
+        
+};; 
+
+"stop"){
+       
+                echo " --------停止 hbase-------"
+                 "/ztgx-jx/cluster/hbase/bin/stop-hbase.sh"
+        
+};;
+esac
+```
+
+
+
+#### spark.sh
+
+```shell
+#!/bin/bash
+case $1 in
+"start"){
+        
+                echo " --------启动 spark-------"
+                "/ztgx-jx/cluster/spark-standalone/sbin/start-all.sh"
+        
+};; 
+
+"stop"){
+       
+                echo " --------停止 spark-------"
+                 "/ztgx-jx/cluster/spark-standalone/sbin/stop-all.sh"
+        
+};;
+esac
+```
+
+
+
+#### cluster.sh
+
+```shell
+
+#!/bin/bash
+
+case $1 in
+"start"){
+        echo ================== 启动 集群 ==================
+        #启动 Zookeeper集群
+        ./zk.sh start
+        #启动 Hadoop集群
+        ./hdp.sh start
+        #启动 hbase 集群
+        ./hbase.sh start
+        #启动spark集群
+        ./spark.sh start
+        };;
+"stop"){
+        echo ================== 停止 集群 ==================
+
+				#停止 spark集群
+        ./spark.sh stop
+				#停止  hbase 集群
+        ./hbase.sh stop
+        #停止 Hadoop集群
+        ./hdp.sh stop
+        #停止 Zookeeper集群
+        ./zk.sh stop
+};;
+esac
+
+```
+
+
+
+### 脚本发布
+
+```shel
+chmod 777 cluster.sh
+```
+
+
+
+### 脚本运行
+
+##### 启动集群
+
+```shell
+[root@vm60 bin]# ./cluster.sh start
+================== 启动 集群 ==================
+---------- zookeeper vm60 启动 ------------
+ZooKeeper JMX enabled by default
+Using config: /ztgx-jx/cluster/zookeeper-3.5.7/bin/../conf/zoo.cfg
+Starting zookeeper ... STARTED
+---------- zookeeper vm61 启动 ------------
+ZooKeeper JMX enabled by default
+Using config: /ztgx-jx/cluster/zookeeper-3.5.7/bin/../conf/zoo.cfg
+Starting zookeeper ... STARTED
+---------- zookeeper vm62 启动 ------------
+ZooKeeper JMX enabled by default
+Using config: /ztgx-jx/cluster/zookeeper-3.5.7/bin/../conf/zoo.cfg
+Starting zookeeper ... STARTED
+ =================== 启动 hadoop集群 ===================
+ --------------- 启动 hdfs ---------------
+Starting namenodes on [vm60]
+Last login: Thu Dec 28 15:27:55 CST 2023
+Starting datanodes
+Last login: Thu Dec 28 15:30:19 CST 2023
+Starting secondary namenodes [vm61]
+Last login: Thu Dec 28 15:30:22 CST 2023
+ --------------- 启动 yarn ---------------
+Starting resourcemanager
+Last login: Thu Dec 28 15:29:11 CST 2023 from 10.5.27.208 on pts/2
+Starting nodemanagers
+Last login: Thu Dec 28 15:30:30 CST 2023
+ --------------- 启动 historyserver ---------------
+ --------启动 hbase-------
+running master, logging to /ztgx-jx/cluster/hbase/logs/hbase-root-master-vm60.out
+vm62: running regionserver, logging to /ztgx-jx/cluster/hbase/logs/hbase-root-regionserver-vm62.out
+vm61: running regionserver, logging to /ztgx-jx/cluster/hbase/logs/hbase-root-regionserver-vm61.out
+vm60: running regionserver, logging to /ztgx-jx/cluster/hbase/logs/hbase-root-regionserver-vm60.out
+ --------启动 spark-------
+starting org.apache.spark.deploy.master.Master, logging to /ztgx-jx/cluster/spark-standalone/logs/spark-root-org.ap
+ache.spark.deploy.master.Master-1-vm60.out
+vm60: starting org.apache.spark.deploy.worker.Worker, logging to /ztgx-jx/cluster/spark-standalone/logs/spark-root-
+org.apache.spark.deploy.worker.Worker-1-vm60.out
+vm61: starting org.apache.spark.deploy.worker.Worker, logging to /ztgx-jx/cluster/spark-standalone/logs/spark-root-
+org.apache.spark.deploy.worker.Worker-1-vm61.out
+vm62: starting org.apache.spark.deploy.worker.Worker, logging to /ztgx-jx/cluster/spark-standalone/logs/spark-root-
+org.apache.spark.deploy.worker.Worker-1-vm62.out
+
+```
+
+查看进程
+
+```shell
+[root@vm60 bin]# ./psc.sh jps -l
+--------- vm60 ----------
+245106 org.apache.hadoop.hbase.master.HMaster
+244961 org.apache.hadoop.mapreduce.v2.hs.JobHistoryServer
+244768 org.apache.hadoop.yarn.server.nodemanager.NodeManager
+244375 org.apache.hadoop.hdfs.server.datanode.DataNode
+245319 org.apache.spark.deploy.master.Master
+245590 org.apache.spark.deploy.worker.Worker
+246069 sun.tools.jps.Jps
+213353 org.tanukisoftware.wrapper.WrapperSimpleApp
+243966 org.apache.zookeeper.server.quorum.QuorumPeerMain
+244220 org.apache.hadoop.hdfs.server.namenode.NameNode
+245244 org.apache.hadoop.hbase.regionserver.HRegionServer
+--------- vm61 ----------
+130640 org.tanukisoftware.wrapper.WrapperSimpleApp
+152067 org.apache.spark.deploy.worker.Worker
+151456 org.apache.hadoop.yarn.server.nodemanager.NodeManager
+151888 org.apache.hadoop.hbase.regionserver.HRegionServer
+151110 org.apache.hadoop.hdfs.server.namenode.SecondaryNameNode
+151303 org.apache.hadoop.yarn.server.resourcemanager.ResourceManager
+150981 org.apache.hadoop.hdfs.server.datanode.DataNode
+150859 org.apache.zookeeper.server.quorum.QuorumPeerMain
+152350 sun.tools.jps.Jps
+--------- vm62 ----------
+125554 org.tanukisoftware.wrapper.WrapperSimpleApp
+144022 org.apache.zookeeper.server.quorum.QuorumPeerMain
+144486 org.apache.hadoop.hbase.regionserver.HRegionServer
+144298 org.apache.hadoop.yarn.server.nodemanager.NodeManager
+144648 org.apache.spark.deploy.worker.Worker
+145118 sun.tools.jps.Jps
+144127 org.apache.hadoop.hdfs.server.datanode.DataNode
+```
+
+
+
+##### 停止集群
+
+```shell
+[root@vm60 bin]# ./cluster.sh stop
+================== 停止 集群 ==================
+ --------停止 spark-------
+vm60: stopping org.apache.spark.deploy.worker.Worker
+vm62: stopping org.apache.spark.deploy.worker.Worker
+vm61: stopping org.apache.spark.deploy.worker.Worker
+stopping org.apache.spark.deploy.master.Master
+ --------停止 hbase-------
+stopping hbase...........
+ =================== 关闭 hadoop集群 ===================
+ --------------- 关闭 historyserver ---------------
+ --------------- 关闭 yarn ---------------
+Stopping nodemanagers
+Last login: Thu Dec 28 15:30:32 CST 2023
+Stopping resourcemanager
+Last login: Thu Dec 28 15:33:54 CST 2023
+ --------------- 关闭 hdfs ---------------
+Stopping namenodes on [vm60]
+Last login: Thu Dec 28 15:30:25 CST 2023
+Stopping datanodes
+Last login: Thu Dec 28 15:33:59 CST 2023
+Stopping secondary namenodes [vm61]
+Last login: Thu Dec 28 15:34:00 CST 2023
+---------- zookeeper vm60 停止 ------------
+ZooKeeper JMX enabled by default
+Using config: /ztgx-jx/cluster/zookeeper-3.5.7/bin/../conf/zoo.cfg
+Stopping zookeeper ... STOPPED
+---------- zookeeper vm61 停止 ------------
+ZooKeeper JMX enabled by default
+Using config: /ztgx-jx/cluster/zookeeper-3.5.7/bin/../conf/zoo.cfg
+Stopping zookeeper ... STOPPED
+---------- zookeeper vm62 停止 ------------
+ZooKeeper JMX enabled by default
+Using config: /ztgx-jx/cluster/zookeeper-3.5.7/bin/../conf/zoo.cfg
+Stopping zookeeper ... STOPPED
+
+```
+
+查看进程
+
+```shell
+[root@vm60 bin]# ./psc.sh jps -l
+--------- vm60 ----------
+213353 org.tanukisoftware.wrapper.WrapperSimpleApp
+247646 sun.tools.jps.Jps
+--------- vm61 ----------
+130640 org.tanukisoftware.wrapper.WrapperSimpleApp
+153388 sun.tools.jps.Jps
+--------- vm62 ----------
+125554 org.tanukisoftware.wrapper.WrapperSimpleApp
+145627 sun.tools.jps.Jps
+```
+
+停止成功！
 
