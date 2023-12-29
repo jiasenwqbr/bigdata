@@ -2197,3 +2197,113 @@ Stopping zookeeper ... STOPPED
 
 停止成功！
 
+
+
+
+
+# 操作
+
+## hbase数据备份和恢复
+
+### 导出
+
+1.将表导入至HDFS
+hbase org.apache.hadoop.hbase.mapreduce.Export credit_jx_grxyf hdfs://vm60:8020/creditbak/credit_jx_grxyf.db
+2.查看HDFS
+hadoop fs -ls /creditbak/
+3.将HDFS导至本地
+hadoop fs -copyToLocal /creditbak/credit_jx_grxyf.db /ztgx/hbase_bak/
+4.删除hdfs上的文件
+hadoop fs -rm -r  /creditbak/credit_jx_grxyf.db
+
+hbase org.apache.hadoop.hbase.mapreduce.Export credit_jx_qyxyf hdfs://vm60:8020/creditbak/credit_jx_qyxyf.db
+hadoop fs -copyToLocal /creditbak/credit_jx_qyxyf.db /ztgx/hbase_bak/
+
+hadoop fs -rm -r  /creditbak/credit_jx_qyxyf.db
+
+
+
+### 导入
+
+#### 1、上传hdfs
+
+hadoop fs -put <本地文件路径> <hdfs文件路径>
+
+```shell
+ hadoop fs -put /ztgx-jx/hbase_bak/credit_jx_grxyf.db  /creditbak
+```
+
+#### 2、创建表
+
+create '表名','列族'
+
+```shell
+root@vm60 hbase_bak]# hbase shell
+2023-12-29 10:06:03,991 WARN  [main] util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+HBase Shell
+Use "help" to get list of supported commands.
+Use "exit" to quit this interactive shell.
+For Reference, please visit: http://hbase.apache.org/2.0/book.html#shell
+Version 2.0.5, r76458dd074df17520ad451ded198cd832138e929, Mon Mar 18 00:41:49 UTC 2019
+Took 0.0043 seconds                                                                                                
+hbase(main):001:0> create 'credit_jx_grxyf','info'
+Created table credit_jx_grxyf
+Took 2.5362 seconds                                                                                                
+=> Hbase::Table - credit_jx_grxyf
+hbase(main):002:0> list
+TABLE                                                                                                              
+SYSTEM.CATALOG                                                                                                     
+credit_jx_grxyf                                                                                                    
+2 row(s)
+Took 0.0378 seconds                                                                                                
+=> ["SYSTEM.CATALOG", "credit_jx_grxyf"]
+hbase(main):003:0> [root@vm60 hbase_bak]# 
+```
+
+#### 3、导入
+
+hbase org.apache.hadoop.hbase.mapreduce.Import <表名> <HDFS地址>
+
+```shell
+hbase org.apache.hadoop.hbase.mapreduce.Import credit_jx_grxyf hdfs://vm60:8020/creditbak/credit_jx_grxyf.db
+```
+
+
+
+#### 4、查看数据
+
+scan 'credit_jx_grxyf',LIMIT=>10
+
+sacn 表名  前十条
+
+```shell
+[root@vm60 hbase_bak]# hbase shell
+2023-12-29 10:26:14,809 WARN  [main] util.NativeCodeLoader: Unable to load native-hadoop library for your platform.
+.. using builtin-java classes where applicable
+HBase Shell
+Use "help" to get list of supported commands.
+Use "exit" to quit this interactive shell.
+For Reference, please visit: http://hbase.apache.org/2.0/book.html#shell
+Version 2.0.5, r76458dd074df17520ad451ded198cd832138e929, Mon Mar 18 00:41:49 UTC 2019
+Took 0.0038 seconds                                                                                                
+hbase(main):001:0> list
+TABLE                                                                                                              
+SYSTEM.CATALOG                                                                                                     
+credit_jx_grxyf                                                                                                    
+2 row(s)
+Took 0.4436 seconds                                                                                                
+=> ["SYSTEM.CATALOG", "credit_jx_grxyf"]
+ase(main):004:0> scan 'credit_jx_grxyf',LIMIT=>10
+ROW                           COLUMN+CELL                                                                          
+                              column=info:flag, timestamp=1619749039875, value=1                                   
+                              column=info:id, timestamp=1619749039875, value=\x00\x00\x00\x00\x00\x00\x00\x1E      
+                              column=info:name, timestamp=1619749039875, value=                                    
+                              column=info:personidcard, timestamp=1619749039875, value=                            
+ 00004584                     column=info:flag, timestamp=1619749039828, value=1                                   
+ 00004584                     column=info:id, timestamp=1619749039828, value=\x00\x00\x00\x00\x00\x00\x00\x0D      
+ 00004584                     column=info:name, timestamp=1619749039828, value=\xE9\x99\x88\xE8\x8A\xB7\xE6\x9F\x94
+ 00004584                     column=info:personidcard, timestamp=1619749039828, value=00004584      
+```
+
+
+
