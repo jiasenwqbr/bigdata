@@ -60,6 +60,7 @@ dbms.connector.https.listen_address=0.0.0.0:7473
 
 # Number of Neo4j worker threads.
 #dbms.threads.worker_count=
+dbms.security.auth_enabled=false
 ```
 
 
@@ -106,3 +107,9 @@ Ip:7474
 ![image-20240123153629753](images/image-20240123153629753.png)
 
 ![image-20240123153925720](images/image-20240123153925720.png)
+
+### FAQ 
+
+Neo.ClientError.Security.Unauthorized: The client is unauthorized due to authentication failure.
+
+修改为dbms.security.auth_enabled=false
